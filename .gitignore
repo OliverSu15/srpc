@@ -1,0 +1,4 @@
+/build/
+/.cache/
+clangdlog
+compile_commands.json
