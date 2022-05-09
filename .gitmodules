@@ -1,0 +1,6 @@
+[submodule "depend/suduo"]
+	path = depend/suduo
+	url = https://github.com/OliverSu15/suduo.git
+[submodule "depend/s2ujson"]
+	path = depend/s2ujson
+	url = https://github.com/OliverSu15/s2ujson.git
