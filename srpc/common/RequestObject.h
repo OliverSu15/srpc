@@ -1,8 +1,10 @@
 #ifndef REQUEST_OBJECT_H
 #define REQUEST_OBJECT_H
+#include <cstddef>
 #include <json.hpp>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 namespace srpc {
@@ -77,11 +79,22 @@ class RequestObject {
 
   std::string to_string() { return _object.to_string(); }
 
+  template <std::size_t I, class... Args>
+  void convert(std::tuple<typename std::decay<Args>::type...>& args) {
+    std::get<I>(args) =
+        _object.get_array(json_params_stirng)[I]
+            .get<std::tuple_element<
+                I, std::tuple<typename std::decay<Args>::type...>>>();
+    if (I == 0) return;
+    convert<I - 1>(args);
+  }
+
  private:
   enum ParamType { None, ByIndex, ByName };
 
-  RequestObject() : _param_type(None), _notifycation(true) { init_head(); }
-  void init_head() { _object.add(json_rpc_stirng, json_rpc_v2_stirng); }
+  RequestObject() : _param_type(None), _notifycation(true) {
+    _object.add(json_rpc_stirng, json_rpc_v2_stirng);
+  }
 
   JsonObject _object;
 
