@@ -7,6 +7,29 @@
 
 namespace srpc {
 namespace common {
+
+struct no_arg {};
+struct have_arg {};
+struct return_void {};
+struct return_nonvoid {};
+
+template <int N>
+struct arg_count_trait {
+  using type = have_arg;
+};
+template <>
+struct arg_count_trait<0> {
+  using type = no_arg;
+};
+template <typename T>
+struct result_trait {
+  using type = return_nonvoid;
+};
+template <>
+struct result_trait<void> {
+  using type = return_void;
+};
+
 template <class F>
 struct function_traits;
 
@@ -19,6 +42,11 @@ struct function_traits<R(Args...)> {
   using return_type = R;
 
   static constexpr std::size_t arity = sizeof...(Args);
+
+  using args_type = std::tuple<typename std::decay<Args>::type...>;
+
+  using args_tag = arg_count_trait<arity>;
+  using return_tag = result_trait<return_type>;
 
   template <std::size_t N>
   struct argument {
@@ -42,22 +70,25 @@ template <class C, class R>
 struct function_traits<R(C::*)> : public function_traits<R(C&)> {};
 
 // functor
+// template <class F>
+// struct function_traits {
+//  private:
+//   using call_type = function_traits<decltype(&F::type::operator())>;
+
+//  public:
+//   using return_type = typename call_type::return_type;
+
+//   static constexpr size_t arity = call_type::arity - 1;
+
+//   template <size_t N>
+//   struct argument {
+//     static_assert(N < arity, "error: invalid parameter index.");
+//     using type = typename call_type::template argument<N + 1>::type;
+//   };
+// };
 template <class F>
-struct function_traits {
- private:
-  using call_type = function_traits<decltype(&F::type::operator())>;
-
- public:
-  using return_type = typename call_type::return_type;
-
-  static constexpr size_t arity = call_type::arity - 1;
-
-  template <size_t N>
-  struct argument {
-    static_assert(N < arity, "error: invalid parameter index.");
-    using type = typename call_type::template argument<N + 1>::type;
-  };
-};
+struct function_traits
+    : public function_traits<decltype(&F::type::operator())> {};
 
 template <class F>
 struct function_traits<F&> : public function_traits<F> {};
