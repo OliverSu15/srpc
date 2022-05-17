@@ -16,12 +16,12 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
-include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/depend/ )
+include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/depend/suduo/ ${PROJECT_SOURCE_DIR}/depend/ )
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} BUILD_TYPE)
 message(STATUS "CXX_FLAGS = " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_${BUILD_TYPE}})
 
-add_subdirectory(depend/suduo)
+# add_subdirectory(depend/suduo)
 add_subdirectory(srpc/common)
 add_subdirectory(srpc/client)
 add_subdirectory(srpc/server)
