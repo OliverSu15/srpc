@@ -21,15 +21,25 @@ static const std::string json_id_stirng = "id";
 
 class RequestObject {
  public:
+  explicit RequestObject(const JsonObject& object) : _object(object) {
+    if (!_object.exist(json_rpc_stirng)) {
+      // TODO handle error
+    }
+    if (!_object.exist(json_method_stirng)) {
+      // TODO handle error
+    }
+    _param_type = ByIndex;
+    _notifycation = !object.exist(json_id_stirng);
+  }
   // ctor for notifycation
   explicit RequestObject(const string& method_name) : RequestObject() {
     _object.add(json_method_stirng, method_name);
   }
-  RequestObject(const string& method_name, const JsonObject& param)
-      : RequestObject(method_name) {
-    _object.add(json_params_stirng, param);
-    _param_type = ByName;
-  }
+  // RequestObject(const string& method_name, const JsonObject& param)
+  //     : RequestObject(method_name) {
+  //   _object.add(json_params_stirng, param);
+  //   _param_type = ByName;
+  // }
   RequestObject(const string& method_name, const JsonArray& param)
       : RequestObject(method_name) {
     _object.add(json_params_stirng, param);
@@ -42,12 +52,12 @@ class RequestObject {
     _object.add(json_id_stirng, id);
     _notifycation = false;
   }
-  RequestObject(const string& method_name, const JsonObject& param, int id)
-      : RequestObject(method_name, id) {
-    _object.add(json_params_stirng, param);
-    _param_type = ByName;
-    _notifycation = false;
-  }
+  // RequestObject(const string& method_name, const JsonObject& param, int id)
+  //     : RequestObject(method_name, id) {
+  //   _object.add(json_params_stirng, param);
+  //   _param_type = ByName;
+  //   _notifycation = false;
+  // }
   RequestObject(const string& method_name, const JsonArray& param, int id)
       : RequestObject(method_name, id) {
     _object.add(json_params_stirng, param);

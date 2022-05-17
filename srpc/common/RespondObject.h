@@ -54,6 +54,9 @@ class RespondObject {
     _object.add(json_error_stirng, error.get_json_object());
   }
 
+  std::string to_string() { return _object.to_string(); }
+  const JsonObject& object() const { return _object; }
+
  private:
   RespondObject() {
     init_head();
