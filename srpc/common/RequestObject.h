@@ -1,6 +1,7 @@
 #ifndef REQUEST_OBJECT_H
 #define REQUEST_OBJECT_H
 #include <cstddef>
+#include <cstdint>
 #include <json.hpp>
 #include <string>
 #include <tuple>
@@ -58,7 +59,7 @@ class RequestObject {
   //   _param_type = ByName;
   //   _notifycation = false;
   // }
-  RequestObject(const string& method_name, const JsonArray& param, int id)
+  RequestObject(const string& method_name, const JsonArray& param, int64_t id)
       : RequestObject(method_name, id) {
     _object.add(json_params_stirng, param);
     _param_type = ByIndex;
