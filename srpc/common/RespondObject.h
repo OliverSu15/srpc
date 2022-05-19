@@ -40,6 +40,15 @@ class ErrorObject {
 
 class RespondObject {
  public:
+  explicit RespondObject(const JsonObject& object) {
+    if (!_object.exist(json_rpc_stirng)) {
+      // TODO handle error
+    }
+    if (!_object.exist(json_method_stirng)) {
+      // TODO handle error
+    }
+    _object = object;
+  }
   RespondObject(const JsonData& result, int id) : RespondObject(id) {
     _object.add(json_result_stirng, result);
   }
@@ -55,7 +64,12 @@ class RespondObject {
   }
 
   std::string to_string() { return _object.to_string(); }
+
   const JsonObject& object() const { return _object; }
+
+  int id() { return _object.get_number(json_id_stirng); }
+
+  JsonData result() { return _object[json_result_stirng]; }
 
  private:
   RespondObject() {
