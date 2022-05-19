@@ -67,7 +67,7 @@ class RespondObject {
 
   const JsonObject& object() const { return _object; }
 
-  int id() { return _object.get_number(json_id_stirng); }
+  int id() { return _object.get_int(json_id_stirng); }
 
   JsonData result() { return _object[json_result_stirng]; }
 

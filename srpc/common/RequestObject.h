@@ -10,6 +10,20 @@
 
 namespace srpc {
 namespace common {
+
+namespace detail {
+struct NormalTag {};
+struct EndTag {};
+template <std::size_t T>
+struct RecursiveTrait {
+  using Tag = NormalTag;
+};
+
+template <>
+struct RecursiveTrait<0> {
+  using Tag = EndTag;
+};
+}  // namespace detail
 using JsonData = s2ujson::JSON_Data;
 using JsonObject = s2ujson::JSON_Object;
 using JsonArray = std::vector<s2ujson::JSON_Data>;
@@ -83,21 +97,31 @@ class RequestObject {
     if (_notifycation) {
       // TODO throw
     }
-    return _object.get_number(json_id_stirng);
+    return _object.get_int(json_id_stirng);
   }
 
   bool is_notifycation() { return _notifycation; }
 
   std::string to_string() { return _object.to_string(); }
 
-  template <std::size_t I, class... Args>
-  void convert(std::tuple<typename std::decay<Args>::type...>& args) {
+  template <size_t I, typename... Args>
+  void convert(std::tuple<Args...>& args) {
+    convert<I>(args, typename detail::RecursiveTrait<I>::Tag());
+  }
+  template <size_t I, typename... Args>
+  void convert(std::tuple<Args...>& args, const detail::NormalTag&) {
+    JsonData data = _object.get_array(json_params_stirng).at(I);
     std::get<I>(args) =
-        _object.get_array(json_params_stirng)[I]
-            .get<std::tuple_element<
-                I, std::tuple<typename std::decay<Args>::type...>>>();
-    if (I == 0) return;
-    convert<I - 1>(args);
+        data.get<typename std::tuple_element<I, std::tuple<Args...>>::type>();
+    convert<I - 1>(args, typename detail::RecursiveTrait<I - 1>::Tag());
+  }
+
+  template <size_t I, typename... Args>
+  void convert(std::tuple<Args...>& args, const detail::EndTag&) {
+    JsonData data = _object.get_array(json_params_stirng).at(I);
+    std::get<I>(args) =
+        data.get<typename std::tuple_element<I, std::tuple<Args...>>::type>();
+    return;
   }
 
  private:
@@ -112,6 +136,7 @@ class RequestObject {
   ParamType _param_type;
   bool _notifycation;
 };
+
 }  // namespace common
 }  // namespace srpc
 
