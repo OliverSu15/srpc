@@ -30,23 +30,34 @@ struct result_trait<void> {
   using type = return_void;
 };
 
+// template <class F>
+// struct function_traits;
+
 template <class F>
-struct function_traits;
+struct function_traits
+    : public function_traits<decltype(&F::type::operator())> {};
+
+template <class F>
+struct function_traits<F&> : public function_traits<F> {};
+
+template <class F>
+struct function_traits<F&&> : public function_traits<F> {};
 
 // function pointer
-template <class R, class... Args>
-struct function_traits<R (*)(Args...)> : public function_traits<R(Args...)> {};
+// template <class R, class... Args>
+// struct function_traits<R (*)(Args...)> : public function_traits<R(Args...)>
+// {};
 
 template <class R, class... Args>
-struct function_traits<R(Args...)> {
+struct function_traits<R (*)(Args...)> {
   using return_type = R;
 
   static constexpr std::size_t arity = sizeof...(Args);
 
   using args_type = std::tuple<typename std::decay<Args>::type...>;
 
-  using args_tag = arg_count_trait<arity>;
-  using return_tag = result_trait<return_type>;
+  typedef arg_count_trait<arity> args_tag;
+  typedef result_trait<return_type> return_tag;
 
   template <std::size_t N>
   struct argument {
@@ -69,6 +80,22 @@ struct function_traits<R (C::*)(Args...) const>
 template <class C, class R>
 struct function_traits<R(C::*)> : public function_traits<R(C&)> {};
 
+template <typename T>
+struct func_kind_info : func_kind_info<decltype(&T::operator())> {};
+
+template <typename C, typename R, typename... Args>
+struct func_kind_info<R (C::*)(Args...)> : func_kind_info<R (*)(Args...)> {};
+
+template <typename C, typename R, typename... Args>
+struct func_kind_info<R (C::*)(Args...) const>
+    : func_kind_info<R (*)(Args...)> {};
+
+template <typename R, typename... Args>
+struct func_kind_info<R (*)(Args...)> {
+  typedef typename arg_count_trait<sizeof...(Args)>::type args_kind;
+  typedef typename result_trait<R>::type result_kind;
+};
+
 // functor
 // template <class F>
 // struct function_traits {
@@ -86,15 +113,7 @@ struct function_traits<R(C::*)> : public function_traits<R(C&)> {};
 //     using type = typename call_type::template argument<N + 1>::type;
 //   };
 // };
-template <class F>
-struct function_traits
-    : public function_traits<decltype(&F::type::operator())> {};
 
-template <class F>
-struct function_traits<F&> : public function_traits<F> {};
-
-template <class F>
-struct function_traits<F&&> : public function_traits<F> {};
 }  // namespace common
 }  // namespace srpc
 
