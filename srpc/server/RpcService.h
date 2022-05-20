@@ -13,6 +13,7 @@
 #include "srpc/common/FunctionTraits.h"
 #include "srpc/common/RequestObject.h"
 #include "srpc/common/RespondObject.h"
+#include "suduo/base/Logger.h"
 #include "suduo/net/Callbacks.h"
 
 namespace srpc {
@@ -68,10 +69,22 @@ class RpcService {
   void send_respone(int id, s2ujson::JSON_Data data,
                     const suduo::net::TcpConnectionPtr& conn);
 
+  template <typename Functor, typename... Args, std::size_t... I>
+  decltype(auto) call_helper(Functor func, std::tuple<Args...>&& params,
+                             std::index_sequence<I...>) {
+    return func(std::get<I>(params)...);
+  }
+  template <typename Functor, typename... Args>
+  decltype(auto) call(Functor f, std::tuple<Args...>& args) {
+    return call_helper(f, std::forward<std::tuple<Args...>>(args),
+                       std::index_sequence_for<Args...>{});
+  }
+
   std::unordered_map<std::string, ProcedureFunctor> _procedure_map;
   std::unordered_map<std::string, NotifyFunctor> _notify_map;
   // SendRespondCallback _send_respond_callback;
 };
+
 template <typename Func>
 inline void RpcService::bind_procedure(const std::string& name, Func func) {
   using trait = common::function_traits<Func>;
@@ -113,7 +126,7 @@ inline void RpcService::bind_procedure(const std::string& name, Func func,
         constexpr int args_count = std::tuple_size<args_type>::value;
         args_type args;
         request.convert(args);
-        std::apply(func, args);
+        call(func, args);
         callback(nullptr);
       }));
 }
@@ -130,7 +143,7 @@ inline void RpcService::bind_procedure(const std::string& name, Func func,
         constexpr int args_count = std::tuple_size<args_type>::value;
         args_type args;
         request.convert<args_count - 1>(args);
-        callback(std::apply(func, args));
+        callback(call(func, args));
       }));
 }
 
@@ -151,11 +164,11 @@ inline void RpcService::bind_notify(const std::string& name, Func func,
   using trait = common::function_traits<Func>;
   using args_type = typename trait::args_type;
   _notify_map.insert(
-      std::make_pair(name, [func](common::RequestObject& request) {
+      std::make_pair(name, [func, this](common::RequestObject& request) {
         constexpr int args_count = std::tuple_size<args_type>::value;
         args_type args;
         request.convert<args_count>(args);
-        std::apply(func, args);
+        call(func, args);
       }));
 }
 
@@ -165,6 +178,7 @@ inline void RpcService::call_procedure(common::RequestObject& request,
   if (iter == _procedure_map.end()) {
     // TODO error handle
   }
+  LOG_INFO << "call_procedure";
   iter->second(request, callback);
 }
 

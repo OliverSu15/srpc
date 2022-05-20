@@ -69,7 +69,7 @@ class RespondObject {
 
   int id() { return _object.get_int(json_id_stirng); }
 
-  JsonData result() { return _object[json_result_stirng]; }
+  JsonData& result() { return _object[json_result_stirng]; }
 
  private:
   RespondObject() {

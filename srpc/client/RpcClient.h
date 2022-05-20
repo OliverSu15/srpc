@@ -39,7 +39,7 @@ class RpcClient {
                   suduo::net::Buffer* buffer, suduo::Timestamp when);
   void connection_callback(const suduo::net::TcpConnectionPtr& conn);
   void send_request(common::RequestObject& request,
-                    const RpcClientService::RespondHandler& handle);
+                    RpcClientService::RespondCallback callback);
   void handle_message(const suduo::net::TcpConnectionPtr& conn,
                       suduo::net::Buffer* buffer);
   void handle_respond(const s2ujson::JSON_Object& object,
@@ -48,7 +48,7 @@ class RpcClient {
   suduo::net::TcpConnectionPtr _conn;
   // RpcClientService _service;
   suduo::net::TcpClient _client;
-  std::map<int, RpcClientService::RespondHandler> _respond_map;
+  std::map<int, RpcClientService::RespondCallback> _respond_map;
   // const RpcClientService::RequestQueue& _queue;
 };
 }  // namespace client

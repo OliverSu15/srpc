@@ -2,11 +2,14 @@
 #define REQUEST_OBJECT_H
 #include <cstddef>
 #include <cstdint>
+#include <exception>
 #include <json.hpp>
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
+
+#include "suduo/base/Logger.h"
 
 namespace srpc {
 namespace common {
@@ -111,8 +114,14 @@ class RequestObject {
   template <size_t I, typename... Args>
   void convert(std::tuple<Args...>& args, const detail::NormalTag&) {
     JsonData data = _object.get_array(json_params_stirng).at(I);
-    std::get<I>(args) =
-        data.get<typename std::tuple_element<I, std::tuple<Args...>>::type>();
+
+    try {
+      std::get<I>(args) =
+          data.get<typename std::tuple_element<I, std::tuple<Args...>>::type>();
+    } catch (const std::exception& e) {
+      LOG_SYSFATAL << e.what();
+    }
+
     convert<I - 1>(args, typename detail::RecursiveTrait<I - 1>::Tag());
   }
 

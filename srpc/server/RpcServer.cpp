@@ -14,12 +14,14 @@ const size_t MaxMessageLen = 100 * 1024 * 1024;
 
 RpcServer::RpcServer(suduo::net::EventLoop* loop,
                      const suduo::net::InetAddress& listen_addr)
-    : _server(loop, listen_addr, "RpcServer") {
+    : _server(loop, listen_addr, "Rpc") {
   _server.set_connection_callback(
       std::bind(&RpcServer::on_connection, this, std::placeholders::_1));
   _server.set_message_callback(
       std::bind(&RpcServer::on_message, this, std::placeholders::_1,
                 std::placeholders::_2, std::placeholders::_3));
+  // LOG_INFO << _server.ip_port();
+  //_server.set_thread_num(0);
 }
 
 void RpcServer::on_connection(const suduo::net::TcpConnectionPtr& conn) {
@@ -69,9 +71,11 @@ void RpcServer::handle_message(const suduo::net::TcpConnectionPtr& conn,
   if (end == buffer->peek()) {
     // TODO handle
   }
-  int json_len = end - buffer->peek();
+  int json_len = end - buffer->peek() + 1;
+  // LOG_INFO << buffer->to_string();
   std::string json = buffer->retrieve_as_string(json_len);
   s2ujson::JSON_Data json_data;
+  LOG_INFO << json;
   try {
     json_data = s2ujson::JSON_parse(json);
   }
@@ -102,7 +106,7 @@ void RpcServer::handle_single_request(
         i->call_procedure(request,
                           [&request, &conn](const s2ujson::JSON_Data& data) {
                             common::RespondObject respond(data, request.id());
-                            conn->send(respond.to_string());
+                            conn->send(respond.to_string() + '\n');
                           });
         return;
       }
@@ -138,7 +142,7 @@ void RpcServer::handle_multi_request(std::vector<s2ujson::JSON_Data>& objects,
       }
     }
   }
-  conn->send(s2ujson::JSON_Data(responds).to_string());
+  conn->send(s2ujson::JSON_Data(responds).to_string() + '\n');
 }
 
 // void RpcServer::send_respond(srpc::common::RespondObject& respond,

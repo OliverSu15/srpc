@@ -5,11 +5,13 @@
 using RpcClient = srpc::client::RpcClient;
 
 void RpcClient::on_message(const suduo::net::TcpConnectionPtr& conn,
-                           suduo::net::Buffer* buffer, suduo::Timestamp when) {}
+                           suduo::net::Buffer* buffer, suduo::Timestamp when) {
+  handle_message(conn, buffer);
+}
 
 void RpcClient::connection_callback(const suduo::net::TcpConnectionPtr& conn) {
   if (conn->connected()) {
-    LOG_INFO << "COnnected";
+    LOG_INFO << "Connected";
     _conn = conn;
   } else {
     LOG_WARN << "disconnected";
@@ -18,11 +20,12 @@ void RpcClient::connection_callback(const suduo::net::TcpConnectionPtr& conn) {
 }
 
 void RpcClient::send_request(common::RequestObject& request,
-                             const RpcClientService::RespondHandler& handle) {
+                             RpcClientService::RespondCallback callback) {
   if (!request.is_notifycation()) {
-    _respond_map.emplace(request.id(), handle);
+    _respond_map.emplace(request.id(), std::move(callback));
   }
-  _conn->send(request.to_string());
+  LOG_INFO << request.to_string() + '\n';
+  _conn->send(request.to_string() + '\n');
 }
 void RpcClient::handle_respond(const s2ujson::JSON_Object& object,
                                const suduo::net::TcpConnectionPtr& conn) {
@@ -31,8 +34,8 @@ void RpcClient::handle_respond(const s2ujson::JSON_Object& object,
   if (iter == _respond_map.end()) {
     // TODO handle error
   }
-  *(iter->second.first) = std::move(respond.result());
-  iter->second.second->count_down();
+  iter->second(respond.result());
+  _respond_map.erase(iter);
 }
 
 void RpcClient::handle_message(const suduo::net::TcpConnectionPtr& conn,
@@ -44,7 +47,7 @@ void RpcClient::handle_message(const suduo::net::TcpConnectionPtr& conn,
   if (end == buffer->peek()) {
     // TODO handle
   }
-  int json_len = end - buffer->peek();
+  int json_len = end - buffer->peek() + 1;
   std::string json = buffer->retrieve_as_string(json_len);
   s2ujson::JSON_Data json_data;
   try {

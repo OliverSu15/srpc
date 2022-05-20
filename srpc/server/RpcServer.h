@@ -19,16 +19,22 @@ namespace srpc {
 namespace server {
 class RpcServer {
  public:
+  using ServicePtr = std::shared_ptr<RpcService>;
+
   RpcServer(suduo::net::EventLoop* loop,
             const suduo::net::InetAddress& listen_addr);
 
-  void add_service(const std::string& name, RpcService* service);  // TODO
+  // void add_service(const std::string& name, RpcService* service);  // TODO
 
-  // void send_respond(srpc::common::RespondObject& respond,
-  //                   const suduo::net::TcpConnectionPtr& conn);
+  ServicePtr create_service() {
+    _service_list.emplace_back(new RpcService());
+    return _service_list.back();
+  };
+  void start() { _server.start(); }
+
+  // suduo::net::TcpServer& server() { return _server; }
 
  private:
-  using ServicePtr = std::unique_ptr<RpcService>;
   using ServiceList = std::vector<ServicePtr>;
 
   void on_connection(const suduo::net::TcpConnectionPtr& conn);
