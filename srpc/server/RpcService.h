@@ -178,7 +178,6 @@ inline void RpcService::call_procedure(common::RequestObject& request,
   if (iter == _procedure_map.end()) {
     // TODO error handle
   }
-  LOG_INFO << "call_procedure";
   iter->second(request, callback);
 }
 

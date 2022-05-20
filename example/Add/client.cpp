@@ -13,7 +13,6 @@ int main() {
   client.register_service(service);
 
   loop.run_every(5, [&service]() {
-    LOG_INFO << "here";
     service.call_procedure(
         "add", [](s2ujson::JSON_Data& data) { LOG_INFO << data.get_int(); }, 1,
         2);

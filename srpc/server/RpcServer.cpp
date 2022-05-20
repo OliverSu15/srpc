@@ -20,8 +20,6 @@ RpcServer::RpcServer(suduo::net::EventLoop* loop,
   _server.set_message_callback(
       std::bind(&RpcServer::on_message, this, std::placeholders::_1,
                 std::placeholders::_2, std::placeholders::_3));
-  // LOG_INFO << _server.ip_port();
-  //_server.set_thread_num(0);
 }
 
 void RpcServer::on_connection(const suduo::net::TcpConnectionPtr& conn) {
@@ -72,10 +70,8 @@ void RpcServer::handle_message(const suduo::net::TcpConnectionPtr& conn,
     // TODO handle
   }
   int json_len = end - buffer->peek() + 1;
-  // LOG_INFO << buffer->to_string();
   std::string json = buffer->retrieve_as_string(json_len);
   s2ujson::JSON_Data json_data;
-  LOG_INFO << json;
   try {
     json_data = s2ujson::JSON_parse(json);
   }

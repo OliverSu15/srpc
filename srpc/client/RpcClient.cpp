@@ -24,7 +24,6 @@ void RpcClient::send_request(common::RequestObject& request,
   if (!request.is_notifycation()) {
     _respond_map.emplace(request.id(), std::move(callback));
   }
-  LOG_INFO << request.to_string() + '\n';
   _conn->send(request.to_string() + '\n');
 }
 void RpcClient::handle_respond(const s2ujson::JSON_Object& object,
