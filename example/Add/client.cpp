@@ -20,7 +20,7 @@ int main() {
         2);
     service.call_procedure(
         "Add", [](s2ujson::JSON_Data& data) { LOG_INFO << data.get_int(); }, 1,
-        2);
+        2);  // error test
     srpc::client::Batch batch;
     batch.add_procedure(
         "add", [](s2ujson::JSON_Data& data) { LOG_INFO << data.get_int(); }, 2,
