@@ -66,34 +66,24 @@ void RpcServer::on_write_complete(const suduo::net::TcpConnectionPtr& conn) {
 
 void RpcServer::handle_message(const suduo::net::TcpConnectionPtr& conn,
                                suduo::net::Buffer* buffer) {
-  const char* end = buffer->find_EOL();
-  if (end == nullptr) {
-    LOG_WARN << "message don't have \\n";
-    throw std::logic_error("message don't have \\n");
-  }
-  if (end == buffer->peek()) {
-    LOG_WARN << "message have only one char";
-    throw std::logic_error("message have only one char");
-  }
-  int json_len = end - buffer->peek() + 1;
-  std::string json = buffer->retrieve_as_string(json_len);
-  s2ujson::JSON_Data json_data;
-  try {
-    json_data = s2ujson::JSON_parse(json);
-  } catch (const std::exception& e) {
-    LOG_ERROR << e.what();
-    send_error(conn, {1, e.what(), nullptr}, INT_MIN);
-  } catch (...) {
-    LOG_FATAL << "unknown error";
-    throw;
-  }
-
-  if (json_data.is_object()) {
+  while (buffer->readable_bytes()) {
+    const char* end = buffer->find_EOL();
+    LOG_INFO << buffer->readable_bytes();
+    if (end == nullptr) {
+      buffer->retrieve(buffer->readable_bytes());
+      LOG_WARN << "message don't have \\n";
+      throw std::logic_error("message don't have \\n");
+    }
+    if (end == buffer->peek()) {
+      buffer->retrieve(buffer->readable_bytes());
+      LOG_WARN << "message have only one char";
+      throw std::logic_error("message have only one char");
+    }
+    int json_len = end - buffer->peek() + 1;
+    std::string json = buffer->retrieve_as_string(json_len);
+    s2ujson::JSON_Data json_data;
     try {
-      handle_single_request(json_data.get_object(), conn);
-    } catch (const common::RpcException& e) {
-      LOG_ERROR << e.message();
-      send_error(conn, e.get_error_object(), json_data["id"].get_int());
+      json_data = s2ujson::JSON_parse(json);
     } catch (const std::exception& e) {
       LOG_ERROR << e.what();
       send_error(conn, {1, e.what(), nullptr}, INT_MIN);
@@ -101,8 +91,34 @@ void RpcServer::handle_message(const suduo::net::TcpConnectionPtr& conn,
       LOG_FATAL << "unknown error";
       throw;
     }
-  } else {
-    handle_multi_request(json_data.get_array(), conn);
+
+    if (json_data.is_object()) {
+      try {
+        handle_single_request(json_data.get_object(), conn);
+      } catch (const common::RpcException& e) {
+        LOG_ERROR << e.message();
+        send_error(conn, e.get_error_object(), json_data["id"].get_int());
+      } catch (const std::exception& e) {
+        LOG_ERROR << e.what();
+        send_error(conn, {1, e.what(), nullptr}, INT_MIN);
+      } catch (...) {
+        LOG_FATAL << "unknown error";
+        throw;
+      }
+    } else {
+      try {
+        handle_multi_request(json_data.get_array(), conn);
+      } catch (const common::RpcException& e) {
+        LOG_ERROR << e.message();
+        send_error(conn, e.get_error_object(), json_data["id"].get_int());
+      } catch (const std::exception& e) {
+        LOG_ERROR << e.what();
+        send_error(conn, {1, e.what(), nullptr}, INT_MIN);
+      } catch (...) {
+        LOG_FATAL << "unknown error";
+        throw;
+      }
+    }
   }
 }
 

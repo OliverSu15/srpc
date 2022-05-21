@@ -28,6 +28,7 @@ void RpcClient::send_request(common::RequestObject& request,
   }
   _conn->send(request.to_string() + '\n');
 }
+
 void RpcClient::send_batch(std::vector<Batch::BatchElement>& batch) {
   s2ujson::JSON_Data requests(std::vector<s2ujson::JSON_Data>(batch.size()));
   for (int i = 0; i < batch.size(); i++) {
@@ -43,7 +44,7 @@ void RpcClient::send_batch(std::vector<Batch::BatchElement>& batch) {
 void RpcClient::handle_respond(const s2ujson::JSON_Object& object) {
   common::RespondObject respond(object);
   if (respond.is_error()) {
-    LOG_ERROR << respond.error_code() << " " << respond.error_message();
+    LOG_ERROR << respond.error_code() << ":" << respond.error_message();
   } else {
     auto iter = _respond_map.find(respond.id());
     if (iter == _respond_map.end()) {
@@ -85,6 +86,5 @@ void RpcClient::handle_message(const suduo::net::TcpConnectionPtr& conn,
     handle_respond(json_data.get_object());
   } else {
     handle_batch(json_data.get_array());
-    // handle batch
   }
 }
