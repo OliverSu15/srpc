@@ -41,10 +41,10 @@ class RequestObject {
  public:
   explicit RequestObject(const JsonObject& object) : _object(object) {
     if (!_object.exist(json_rpc_stirng)) {
-      // TODO handle error
+      throw std::invalid_argument("not a RPC call");
     }
     if (!_object.exist(json_method_stirng)) {
-      // TODO handle error
+      throw std::invalid_argument("not method name provide");
     }
     _param_type = ByIndex;
     _notifycation = !object.exist(json_id_stirng);
@@ -53,11 +53,6 @@ class RequestObject {
   explicit RequestObject(const string& method_name) : RequestObject() {
     _object.add(json_method_stirng, method_name);
   }
-  // RequestObject(const string& method_name, const JsonObject& param)
-  //     : RequestObject(method_name) {
-  //   _object.add(json_params_stirng, param);
-  //   _param_type = ByName;
-  // }
   RequestObject(const string& method_name, const JsonArray& param)
       : RequestObject(method_name) {
     _object.add(json_params_stirng, param);
@@ -70,12 +65,6 @@ class RequestObject {
     _object.add(json_id_stirng, id);
     _notifycation = false;
   }
-  // RequestObject(const string& method_name, const JsonObject& param, int id)
-  //     : RequestObject(method_name, id) {
-  //   _object.add(json_params_stirng, param);
-  //   _param_type = ByName;
-  //   _notifycation = false;
-  // }
   RequestObject(const string& method_name, const JsonArray& param, int64_t id)
       : RequestObject(method_name, id) {
     _object.add(json_params_stirng, param);
@@ -84,26 +73,22 @@ class RequestObject {
   }
 
   const string& method() { return _object.get_string(json_method_stirng); }
-  const JsonObject& param_by_name() {
-    if (_param_type != ByName) {
-      // TODO throw
-    }
-    return _object.get_object(json_params_stirng);
-  }
-  const JsonArray& param_by_index() {
-    if (_param_type != ByIndex) {
-      // TODO throw
-    }
-    return _object.get_array(json_params_stirng);
-  }
+
   int id() {
     if (_notifycation) {
-      // TODO throw
+      throw std::logic_error("no id in notify");
     }
     return _object.get_int(json_id_stirng);
   }
 
-  bool is_notifycation() { return _notifycation; }
+  void set_id(int id) {
+    if (_notifycation) {
+      throw std::logic_error("no id in notify");
+    }
+    _object.get_int(json_id_stirng) = id;
+  }
+
+  bool is_notifycation() const { return _notifycation; }
 
   std::string to_string() { return _object.to_string(); }
 
@@ -119,7 +104,8 @@ class RequestObject {
       std::get<I>(args) =
           data.get<typename std::tuple_element<I, std::tuple<Args...>>::type>();
     } catch (const std::exception& e) {
-      LOG_SYSFATAL << e.what();
+      LOG_ERROR << e.what();
+      throw e;
     }
 
     convert<I - 1>(args, typename detail::RecursiveTrait<I - 1>::Tag());
@@ -128,10 +114,16 @@ class RequestObject {
   template <size_t I, typename... Args>
   void convert(std::tuple<Args...>& args, const detail::EndTag&) {
     JsonData data = _object.get_array(json_params_stirng).at(I);
-    std::get<I>(args) =
-        data.get<typename std::tuple_element<I, std::tuple<Args...>>::type>();
+    try {
+      std::get<I>(args) =
+          data.get<typename std::tuple_element<I, std::tuple<Args...>>::type>();
+    } catch (const std::exception& e) {
+      LOG_ERROR << e.what();
+      throw e;
+    }
     return;
   }
+  const JsonObject& object() const { return _object; }
 
  private:
   enum ParamType { None, ByIndex, ByName };

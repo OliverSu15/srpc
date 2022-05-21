@@ -30,9 +30,6 @@ struct result_trait<void> {
   using type = return_void;
 };
 
-// template <class F>
-// struct function_traits;
-
 template <class F>
 struct function_traits
     : public function_traits<decltype(&F::type::operator())> {};
@@ -42,11 +39,6 @@ struct function_traits<F&> : public function_traits<F> {};
 
 template <class F>
 struct function_traits<F&&> : public function_traits<F> {};
-
-// function pointer
-// template <class R, class... Args>
-// struct function_traits<R (*)(Args...)> : public function_traits<R(Args...)>
-// {};
 
 template <class R, class... Args>
 struct function_traits<R (*)(Args...)> {
@@ -95,24 +87,6 @@ struct func_kind_info<R (*)(Args...)> {
   typedef typename arg_count_trait<sizeof...(Args)>::type args_kind;
   typedef typename result_trait<R>::type result_kind;
 };
-
-// functor
-// template <class F>
-// struct function_traits {
-//  private:
-//   using call_type = function_traits<decltype(&F::type::operator())>;
-
-//  public:
-//   using return_type = typename call_type::return_type;
-
-//   static constexpr size_t arity = call_type::arity - 1;
-
-//   template <size_t N>
-//   struct argument {
-//     static_assert(N < arity, "error: invalid parameter index.");
-//     using type = typename call_type::template argument<N + 1>::type;
-//   };
-// };
 
 }  // namespace common
 }  // namespace srpc

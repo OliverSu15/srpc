@@ -8,12 +8,13 @@
 #include <string>
 #include <utility>
 
+#include "json.hpp"
 #include "srpc/client/RpcClientService.h"
 #include "suduo/base/Timestamp.h"
 #include "suduo/net/TcpClient.h"
 namespace srpc {
 namespace client {
-class RpcClient {
+class RpcClient : suduo::noncopyable {
  public:
   RpcClient(suduo::net::EventLoop* loop,
             const suduo::net::InetAddress& server_addr)
@@ -31,25 +32,23 @@ class RpcClient {
     service.set_send_respond_callback(std::bind(&RpcClient::send_request, this,
                                                 std::placeholders::_1,
                                                 std::placeholders::_2));
+    service.set_send_batch_callback(
+        std::bind(&RpcClient::send_batch, this, std::placeholders::_1));
   }
-  // const RpcClientService& service() { return _service; }
 
  private:
   void on_message(const suduo::net::TcpConnectionPtr& conn,
                   suduo::net::Buffer* buffer, suduo::Timestamp when);
   void connection_callback(const suduo::net::TcpConnectionPtr& conn);
-  void send_request(common::RequestObject& request,
-                    RpcClientService::RespondCallback callback);
+  void send_request(common::RequestObject& request, RespondCallback callback);
+  void send_batch(std::vector<Batch::BatchElement>& batch);
   void handle_message(const suduo::net::TcpConnectionPtr& conn,
                       suduo::net::Buffer* buffer);
-  void handle_respond(const s2ujson::JSON_Object& object,
-                      const suduo::net::TcpConnectionPtr& conn);
-
+  void handle_respond(const s2ujson::JSON_Object& object);
+  void handle_batch(std::vector<s2ujson::JSON_Data>& array);
   suduo::net::TcpConnectionPtr _conn;
-  // RpcClientService _service;
   suduo::net::TcpClient _client;
-  std::map<int, RpcClientService::RespondCallback> _respond_map;
-  // const RpcClientService::RequestQueue& _queue;
+  std::map<int, RespondCallback> _respond_map;
 };
 }  // namespace client
 }  // namespace srpc

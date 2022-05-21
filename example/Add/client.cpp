@@ -12,10 +12,21 @@ int main() {
   srpc::client::RpcClientService service;
   client.register_service(service);
 
-  loop.run_every(5, [&service]() {
+  loop.run_every(10, [&service]() {
     service.call_procedure(
         "add", [](s2ujson::JSON_Data& data) { LOG_INFO << data.get_int(); }, 1,
         2);
+    service.call_procedure(
+        "Add", [](s2ujson::JSON_Data& data) { LOG_INFO << data.get_int(); }, 1,
+        2);
+    srpc::client::Batch batch;
+    batch.add_procedure(
+        "add", [](s2ujson::JSON_Data& data) { LOG_INFO << data.get_int(); }, 2,
+        3);
+    batch.add_procedure(
+        "add", [](s2ujson::JSON_Data& data) { LOG_INFO << data.get_int(); }, 5,
+        5);
+    service.call_batch(batch);
   });
 
   client.connect();

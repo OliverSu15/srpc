@@ -17,22 +17,18 @@
 #include "suduo/suduo/net/TcpServer.h"
 namespace srpc {
 namespace server {
-class RpcServer {
+class RpcServer : suduo::noncopyable {
  public:
   using ServicePtr = std::shared_ptr<RpcService>;
 
   RpcServer(suduo::net::EventLoop* loop,
             const suduo::net::InetAddress& listen_addr);
 
-  // void add_service(const std::string& name, RpcService* service);  // TODO
-
   ServicePtr create_service() {
     _service_list.emplace_back(new RpcService());
     return _service_list.back();
   };
   void start() { _server.start(); }
-
-  // suduo::net::TcpServer& server() { return _server; }
 
  private:
   using ServiceList = std::vector<ServicePtr>;
@@ -48,6 +44,8 @@ class RpcServer {
 
   void send_response(const suduo::net::TcpConnectionPtr& conn,
                      const common::RespondObject& response);
+  void send_error(const suduo::net::TcpConnectionPtr& conn,
+                  const common::ErrorObject& error, int id);
   void handle_single_request(const s2ujson::JSON_Object& object,
                              const suduo::net::TcpConnectionPtr& conn);
   void handle_multi_request(std::vector<s2ujson::JSON_Data>& objects,

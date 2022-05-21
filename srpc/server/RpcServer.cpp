@@ -1,10 +1,11 @@
 #include "RpcServer.h"
 
+#include <climits>
+#include <exception>
 #include <functional>
 
 #include "json.hpp"
-#include "srpc/common/RequestObject.h"
-#include "srpc/common/RespondObject.h"
+#include "srpc/common/Exception.h"
 #include "suduo/base/Logger.h"
 
 using RpcServer = srpc::server::RpcServer;
@@ -39,9 +40,12 @@ void RpcServer::on_message(const suduo::net::TcpConnectionPtr& conn,
                            suduo::net::Buffer* buffer, suduo::Timestamp when) {
   try {
     handle_message(conn, buffer);
-  }
-  // TODO catch Exception
-  catch (...) {
+  } catch (const std::exception& e) {
+    LOG_ERROR << e.what();
+    send_error(conn, {1, e.what(), nullptr}, INT_MIN);
+  } catch (...) {
+    LOG_FATAL << "unknown error";
+    throw;
   }
 }
 
@@ -64,22 +68,39 @@ void RpcServer::handle_message(const suduo::net::TcpConnectionPtr& conn,
                                suduo::net::Buffer* buffer) {
   const char* end = buffer->find_EOL();
   if (end == nullptr) {
-    // TODO handle
+    LOG_WARN << "message don't have \\n";
+    throw std::logic_error("message don't have \\n");
   }
   if (end == buffer->peek()) {
-    // TODO handle
+    LOG_WARN << "message have only one char";
+    throw std::logic_error("message have only one char");
   }
   int json_len = end - buffer->peek() + 1;
   std::string json = buffer->retrieve_as_string(json_len);
   s2ujson::JSON_Data json_data;
   try {
     json_data = s2ujson::JSON_parse(json);
+  } catch (const std::exception& e) {
+    LOG_ERROR << e.what();
+    send_error(conn, {1, e.what(), nullptr}, INT_MIN);
+  } catch (...) {
+    LOG_FATAL << "unknown error";
+    throw;
   }
-  // TODO handle error
-  catch (...) {
-  }
+
   if (json_data.is_object()) {
-    handle_single_request(json_data.get_object(), conn);
+    try {
+      handle_single_request(json_data.get_object(), conn);
+    } catch (const common::RpcException& e) {
+      LOG_ERROR << e.message();
+      send_error(conn, e.get_error_object(), json_data["id"].get_int());
+    } catch (const std::exception& e) {
+      LOG_ERROR << e.what();
+      send_error(conn, {1, e.what(), nullptr}, INT_MIN);
+    } catch (...) {
+      LOG_FATAL << "unknown error";
+      throw;
+    }
   } else {
     handle_multi_request(json_data.get_array(), conn);
   }
@@ -96,6 +117,7 @@ void RpcServer::handle_single_request(
         return;
       }
     }
+    throw common::RpcException("no notify exists");
   } else {
     for (auto& i : _service_list) {
       if (i->procedure_exists(request.method())) {
@@ -107,12 +129,13 @@ void RpcServer::handle_single_request(
         return;
       }
     }
+    throw common::RpcException("no procedure exists");
   }
 }
 
 void RpcServer::handle_multi_request(std::vector<s2ujson::JSON_Data>& objects,
                                      const suduo::net::TcpConnectionPtr& conn) {
-  std::vector<s2ujson::JSON_Data> responds(objects.size());
+  std::vector<s2ujson::JSON_Data> responds;
   for (auto& object : objects) {
     common::RequestObject request(object.get_object());
     if (request.is_notifycation()) {
@@ -120,9 +143,13 @@ void RpcServer::handle_multi_request(std::vector<s2ujson::JSON_Data>& objects,
         if (i->notify_exists(request.method())) {
           i->call_notify(request.method(), request);
           break;
-          ;
+        } else if (i == _service_list.back()) {
+          responds.emplace_back(
+              common::RespondObject(
+                  common::RpcException("no notify exists").get_error_object(),
+                  request.id())
+                  .object());
         }
-        // TODO
       }
     } else {
       for (auto& i : _service_list) {
@@ -132,16 +159,22 @@ void RpcServer::handle_multi_request(std::vector<s2ujson::JSON_Data>& objects,
             responds.emplace_back(
                 common::RespondObject(data, request.id()).object());
           });
+          break;
+        } else if (i == _service_list.back()) {
+          responds.emplace_back(
+              common::RespondObject(common::RpcException("no procedure exists")
+                                        .get_error_object(),
+                                    request.id())
+                  .object());
         }
-        break;
-        // TODO
       }
     }
   }
   conn->send(s2ujson::JSON_Data(responds).to_string() + '\n');
 }
 
-// void RpcServer::send_respond(srpc::common::RespondObject& respond,
-//                              const suduo::net::TcpConnectionPtr& conn) {
-//   conn->send(respond.to_string());
-// }
+void RpcServer::send_error(const suduo::net::TcpConnectionPtr& conn,
+                           const common::ErrorObject& error, int id) {
+  common::RespondObject respond(error, id);
+  conn->send(respond.to_string() + '\n');
+}

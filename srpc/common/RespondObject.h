@@ -1,5 +1,6 @@
 #ifndef RESPOND_OBJECT_H
 #define RESPOND_OBJECT_H
+#include <climits>
 #include <json.hpp>
 #include <string>
 
@@ -32,7 +33,7 @@ class ErrorObject {
     _object.add(json_data_stirng, data);
   }
 
-  JsonObject& get_json_object() { return _object; }
+  JsonObject get_json_object() { return _object; }
 
  private:
   JsonObject _object;
@@ -40,14 +41,10 @@ class ErrorObject {
 
 class RespondObject {
  public:
-  explicit RespondObject(const JsonObject& object) {
+  explicit RespondObject(const JsonObject& object) : _object(object) {
     if (!_object.exist(json_rpc_stirng)) {
-      // TODO handle error
+      throw std::invalid_argument("not a RPC respond");
     }
-    if (!_object.exist(json_method_stirng)) {
-      // TODO handle error
-    }
-    _object = object;
   }
   RespondObject(const JsonData& result, int id) : RespondObject(id) {
     _object.add(json_result_stirng, result);
@@ -59,8 +56,11 @@ class RespondObject {
     _object.add(json_result_stirng, result);
   }
 
-  RespondObject(ErrorObject& error, int id) : RespondObject(id) {
-    _object.add(json_error_stirng, error.get_json_object());
+  RespondObject(ErrorObject error, int id) : RespondObject(id) {
+    _object.add(json_error_stirng, std::move(error.get_json_object()));
+    if (id == INT_MIN) {
+      _object[json_id_stirng] = nullptr;
+    }
   }
 
   std::string to_string() { return _object.to_string(); }
@@ -70,6 +70,15 @@ class RespondObject {
   int id() { return _object.get_int(json_id_stirng); }
 
   JsonData& result() { return _object[json_result_stirng]; }
+  std::string& error_message() {
+    return _object[json_error_stirng]
+        .get_object()[json_message_stirng]
+        .get_string();
+  }
+  int error_code() {
+    return _object[json_error_stirng].get_object()[json_code_stirng].get_int();
+  }
+  bool is_error() { return _object.exist(json_error_stirng); }
 
  private:
   RespondObject() {

@@ -10,15 +10,17 @@
 #include <vector>
 
 #include "json.hpp"
+#include "srpc/common/Exception.h"
 #include "srpc/common/FunctionTraits.h"
 #include "srpc/common/RequestObject.h"
 #include "srpc/common/RespondObject.h"
 #include "suduo/base/Logger.h"
+#include "suduo/base/noncopyable.h"
 #include "suduo/net/Callbacks.h"
 
 namespace srpc {
 namespace server {
-class RpcService {
+class RpcService : suduo::noncopyable {
  public:
   using SendRespondCallback = std::function<void(const s2ujson::JSON_Data&)>;
 
@@ -65,9 +67,6 @@ class RpcService {
   using ProcedureFunctor =
       std::function<void(common::RequestObject&, const SendRespondCallback&)>;
   using NotifyFunctor = std::function<void(common::RequestObject&)>;
-
-  void send_respone(int id, s2ujson::JSON_Data data,
-                    const suduo::net::TcpConnectionPtr& conn);
 
   template <typename Functor, typename... Args, std::size_t... I>
   decltype(auto) call_helper(Functor func, std::tuple<Args...>&& params,
@@ -176,7 +175,8 @@ inline void RpcService::call_procedure(common::RequestObject& request,
                                        const SendRespondCallback& callback) {
   auto iter = _procedure_map.find(request.method());
   if (iter == _procedure_map.end()) {
-    // TODO error handle
+    LOG_ERROR << "no procedure exists";
+    throw common::RpcException("no procedure exists");
   }
   iter->second(request, callback);
 }
@@ -185,7 +185,8 @@ inline void RpcService::call_notify(const std::string& name,
                                     common::RequestObject& request) {
   auto iter = _notify_map.find(name);
   if (iter == _notify_map.end()) {
-    // TODO error handle
+    LOG_ERROR << "no notify exists";
+    throw common::RpcException("no notify exists");
   }
   iter->second(request);
 }
